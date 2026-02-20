@@ -13,19 +13,22 @@ import (
 	"time"
 )
 
-func producer(stream Stream) (tweets []*Tweet) {
+var tweetCh = make(chan *Tweet)
+
+func producer(stream Stream) {
 	for {
 		tweet, err := stream.Next()
 		if err == ErrEOF {
-			return tweets
+			close(tweetCh)
+			return 
 		}
 
-		tweets = append(tweets, tweet)
+		tweetCh <- tweet
 	}
 }
 
-func consumer(tweets []*Tweet) {
-	for _, t := range tweets {
+func consumer() {
+	for t := range tweetCh {
 		if t.IsTalkingAboutGo() {
 			fmt.Println(t.Username, "\ttweets about golang")
 		} else {
@@ -39,10 +42,10 @@ func main() {
 	stream := GetMockStream()
 
 	// Producer
-	tweets := producer(stream)
+	go producer(stream)
 
 	// Consumer
-	consumer(tweets)
+    consumer()
 
 	fmt.Printf("Process took %s\n", time.Since(start))
 }
